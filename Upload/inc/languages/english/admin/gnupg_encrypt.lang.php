@@ -23,6 +23,10 @@ $l['setting_gnupg_encrypt_forceonregister'] = 'Force on Registration';
 $l['setting_gnupg_encrypt_forceonregister_desc'] = 'Force new registrations to supply a public key and a fingerprint.';
 $l['setting_gnupg_encrypt_forcegroups'] = 'Force to Groups';
 $l['setting_gnupg_encrypt_forcegroups_desc'] = 'Force these groups to provide their public key and fingerprint in order to use the forum.';
+$l['setting_gnupg_encrypt_2fagroups'] = '2FA Allowed Groups';
+$l['setting_gnupg_encrypt_2fagroups_desc'] = 'Select the groups allowed to use a verification step in login as a second factor authentication process.';
+$l['setting_gnupg_encrypt_force2fagroups'] = 'Force 2FA Groups';
+$l['setting_gnupg_encrypt_force2fagroups_desc'] = 'The following groups will be required to activate 2FA before proceeding outside the UserCP.';
 
 // Admin CP
 $l['gnupg_encrypt_pluginlibrary'] = 'This plugin requires <a href="{1}">PluginLibrary</a> version {2} or later to be uploaded to your forum. Please upload the necessary files.';

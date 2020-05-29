@@ -84,11 +84,13 @@ class GnuPG_Encrypt
 		{
 			$plugins->add_hook('member_register_end', array($this, 'hook_member_register_end'));
 			$plugins->add_hook('usercp_profile_end', array($this, 'hook_usercp_profile_end'));
-			/*$plugins->add_hook('modcp_editprofile_end', array($this, 'hook_modcp_editprofile_end'));*/
+			$plugins->add_hook('modcp_editprofile_end', array($this, 'hook_modcp_editprofile_end'));
 			$plugins->add_hook('datahandler_user_validate', array($this, 'hook_datahandler_user_validate'));
 			$plugins->add_hook('datahandler_user_update', array($this, 'hook_datahandler_user_update'));
 			$plugins->add_hook('datahandler_user_insert', array($this, 'hook_datahandler_user_insert'));
 			$plugins->add_hook('member_profile_end', array($this, 'hook_member_profile_end'));
+			$plugins->add_hook('global_start', array($this, 'hook_global_start'));
+			$plugins->add_hook('global_end', array($this, 'hook_global_end'));
 
 			// Neat trick for caching our custom template(s)
 			global $templatelist;
@@ -114,6 +116,10 @@ class GnuPG_Encrypt
 				$templatelist .= ', ';
 			}
 		}
+
+		$plugins->add_hook('datahandler_login_complete_end', array($this, 'hook_datahandler_login_complete_end'));
+
+		$plugins->add_hook('member_do_login_end', array($this, 'hook_member_do_login_end'));
 	}
 
 	// Plugin API
@@ -231,19 +237,19 @@ class GnuPG_Encrypt
 	
 		// Add settings group
 		$PL->settings('gnupg_encrypt', $lang->setting_group_gnupg_encrypt, $lang->setting_group_gnupg_encrypt_desc, array(
-			'groups'		=> array(
+			'groups'			=> array(
 			   'title'			=> $lang->setting_gnupg_encrypt_groupselect,
 			   'description'	=> $lang->setting_gnupg_encrypt_groupselect_desc,
 			   'optionscode'	=> 'groupselect',
-			   'value'			=> ''
+			   'value'			=> -1
 			),
-			'mods'		=> array(
+			'mods'				=> array(
 			   'title'			=> $lang->setting_gnupg_encrypt_mods,
 			   'description'	=> $lang->setting_gnupg_encrypt_mods_desc,
 			   'optionscode'	=> 'groupselect',
-			   'value'			=> '3,4'
+			   'value'			=> 4
 			),
-			'forceonregister'		=> array(
+			'forceonregister'	=> array(
 			   'title'			=> $lang->setting_gnupg_encrypt_forceonregister,
 			   'description'	=> $lang->setting_gnupg_encrypt_forceonregister_desc,
 			   'optionscode'	=> 'yesno',
@@ -255,10 +261,196 @@ class GnuPG_Encrypt
 			   'optionscode'	=> 'groupselect',
 			   'value'			=> -1
 			),
+			'2fagroups'		=> array(
+			   'title'			=> $lang->setting_gnupg_encrypt_2fagroups,
+			   'description'	=> $lang->setting_gnupg_encrypt_2fagroups_desc,
+			   'optionscode'	=> 'groupselect',
+			   'value'			=> -1
+			),
+			'force2fagroups'		=> array(
+			   'title'			=> $lang->setting_gnupg_encrypt_force2fagroups,
+			   'description'	=> $lang->setting_gnupg_encrypt_force2fagroups_desc,
+			   'optionscode'	=> 'groupselect',
+			   'value'			=> -1
+			),
 		));
 	
 		// Add template group
 		$PL->templates('gnupgencrypt', 'GnuPG Encrypt', array(
+			'confirm' => '<html>
+<head>
+	<title>{$mybb->settings[\'bbname\']} - {$lang->gnupg_encrypt_member_2fa}</title>
+	{$headerinclude}
+</head>
+<body>
+	{$header}
+	<table width="100%" border="0" align="center">
+		<tr>
+			<td valign="top">
+				<form action="{$mybb->settings[\'bburl\']}/usercp.php" method="post">
+					<input type="hidden" name="action" value="profile" />
+					<table border="0" cellspacing="{$theme[\'borderwidth\']}" cellpadding="{$theme[\'tablespace\']}" class="tborder">
+						<tr>
+							<td class="thead" colspan="2"><strong>{$lang->gnupg_encrypt_member_2fa}</strong></td>
+						</tr>
+						<tr>
+							<td class="tcat" colspan="2">{$description}</td>
+						</tr>
+						<tr>
+							<td class="trow1"><strong>{$lang->gnupg_encrypt_member_public_key}:</strong></td>
+							<td class="trow1">{$gnupg_encrypt_public_key}</td>
+						</tr>
+						<tr>
+							<td class="trow2"><strong>{$lang->gnupg_encrypt_member_fingerprint}:</strong></td>
+							<td class="trow2">{$gnupg_encrypt_fingerprint}</td>
+						</tr>
+						<tr>
+							<td class="trow2"><strong>{$lang->gnupg_encrypt_member_encrypted_text}:</strong></td>
+							<td class="trow2">{$gnupg_encrypt_encrypted_text}</td>
+						</tr>
+						<tr>
+							<td class="trow2"><strong>{$lang->gnupg_encrypt_member_decrypted_text}:</strong></td>
+							<td class="trow2"><input type="number" class="textbox" name="gnupg_encrypt_decrypted_text" id="gnupg_encrypt_decrypted_text" value="{$gnupg_encrypt_decrypted_text}" /></td>
+						</tr>
+					</table>
+					<br class="clear" />
+					<div style="text-align: center">
+						<input type="submit" class="button" value="{$lang->gnupg_encrypt_member_2fa_activate}" />
+					</div>
+				</form>
+			</td>
+		</tr>
+	</table>
+	{$footer}
+</body>
+</html>',
+			'login' => '<html>
+<head>
+	<title>{$mybb->settings[\'bbname\]} - {$lang->gnupg_encrypt_member_2fa}</title>
+	{$headerinclude}
+</head>
+<body>
+	{$header}
+	<table width="100%" border="0" align="center">
+		<tr>
+			<td valign="top">
+				<form action="{$mybb->settings[\'bburl\']}/member.php" method="post">
+					<input type="hidden" name="action" value="login" />
+					<table border="0" cellspacing="{$theme[\'borderwidth\']}" cellpadding="{$theme[\'tablespace\']}" class="tborder">
+						<tr>
+							<td class="thead" colspan="2"><strong>{$lang->gnupg_encrypt_member_2fa}</strong></td>
+						</tr>
+						<tr>
+							<td class="tcat" colspan="2">{$description}</td>
+						</tr>
+						<tr>
+							<td class="trow1"><strong>{$lang->gnupg_encrypt_member_public_key}:</strong></td>
+							<td class="trow1">{$gnupg_encrypt_public_key}</td>
+						</tr>
+						<tr>
+							<td class="trow2"><strong>{$lang->gnupg_encrypt_member_fingerprint}:</strong></td>
+							<td class="trow2">{$gnupg_encrypt_fingerprint}</td>
+						</tr>
+						<tr>
+							<td class="trow2"><strong>{$lang->gnupg_encrypt_member_encrypted_text}:</strong></td>
+							<td class="trow2">{$gnupg_encrypt_encrypted_text}</td>
+						</tr>
+						<tr>
+							<td class="trow2"><strong>{$lang->gnupg_encrypt_member_decrypted_text}:</strong></td>
+							<td class="trow2"><input type="number" class="textbox" name="gnupg_encrypt_decrypted_text" id="gnupg_encrypt_decrypted_text" value="{$gnupg_encrypt_decrypted_text}" /></td>
+						</tr>
+					</table>
+					<br class="clear" />
+					<div style="text-align: center">
+						<input type="submit" class="button" value="{$lang->gnupg_encrypt_member_2fa_login}" />
+					</div>
+				</form>
+			</td>
+		</tr>
+	</table>
+	{$footer}
+</body>
+</html>',
+			'modcp' => '',
+			'profile' => '<table border="0" cellspacing="{$theme[\'borderwidth\']}" cellpadding="{$theme[\'tablespace\']}" class="tborder">
+	<tr>
+		<td colspan="2" class="thead"><strong>{$lang->gnupg_encrypt_member_title}</strong></td>
+	</tr>
+	<tr>
+		<td class="trow1" style="width: 20%;"><strong>{$lang->gnupg_encrypt_member_public_key}:</strong></td>
+		<td class="trow1">{$gnupg_encrypt_public_key}</td>
+	</tr>
+	<tr>
+		<td class="trow2"><strong>{$lang->gnupg_encrypt_member_fingerprint}:</strong></td>
+		<td class="trow2">{$gnupg_encrypt_fingerprint}</td>
+	</tr>
+</table>
+<br />',
+			'register' => '<br />
+<fieldset class="trow2">
+<legend><strong><label for="timezone">{$lang->gnupg_encrypt_member_title}</label></strong></legend>
+<table cellspacing="0" cellpadding="{$theme[\'tablespace\']}" width="100%">
+	<tr>
+		<td>
+			<span class="smalltext">{$lang->gnupg_encrypt_member_public_key}</span>
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<textarea name="gnupg_encrypt_public_key" id="gnupg_encrypt_public_key" style="width: 100%" rows="10">{$gnupg_encrypt_public_key}</textarea>
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<span class="smalltext">{$lang->gnupg_encrypt_member_fingerprint}</span>
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<input type="text" class="textbox" name="gnupg_encrypt_fingerprint" id="gnupg_encrypt_fingerprint" style="width: 50%" value="{$gnupg_encrypt_fingerprint}" />
+		</td>
+	</tr>
+</table>
+</fieldset>',
+			'usercp' => '<br />
+<fieldset class="trow2">
+	<legend><strong>{$lang->gnupg_encrypt_member_title}</strong></legend>
+	<table cellspacing="0" cellpadding="{$theme[\'tablespace\']}">
+		<tr>
+			<td>
+				<span class="smalltext">{$lang->gnupg_encrypt_member_public_key}</span>
+			</td>
+		</tr>
+		<tr>
+			<td>
+				<textarea name="gnupg_encrypt_public_key" id="gnupg_encrypt_public_key" style="width: 100%" rows="10" cols="80">{$gnupg_encrypt_public_key}</textarea>
+			</td>
+		</tr>
+		<tr>
+			<td>
+				<span class="smalltext">{$lang->gnupg_encrypt_member_fingerprint}</span>
+			</td>
+		</tr>
+		<tr>
+			<td>
+				<input type="text" class="textbox" name="gnupg_encrypt_fingerprint" id="gnupg_encrypt_fingerprint" style="width: 50%" value="{$gnupg_encrypt_fingerprint}" />
+			</td>
+		</tr>
+		{$gnupg_encrypt_usercp_2fa}
+	</table>
+</fieldset>',
+			'usercp_2fa' => '<tr>
+	<td>
+		<span class="smalltext">{$lang->gnupg_encrypt_member_2fa}</span>
+	</td>
+</tr>
+<tr>
+	<td>
+		<input type="checkbox" class="checkbox" name="gnupg_encrypt_2fa" id="gnupg_encrypt_2fa" value="1" {$gnupg_encrypt_2fa_checked} />
+		<label for="gnupg_encrypt_2fa">{$lang->gnupg_encrypt_member_2fa}</label>
+	</td>
+</tr>',
+			'' => '',
 			'' => '',
 		));
 	
@@ -276,7 +468,8 @@ class GnuPG_Encrypt
 		{
 			$plugins['gnupg_encrypt'] = $info['versioncode'];
 		}
-	
+
+		$this->_db_verify_tables();
 		$this->_db_verify_columns();
 	
 		/*~*~* RUN UPDATES START *~*~*/
@@ -310,7 +503,8 @@ class GnuPG_Encrypt
 	function _install()
 	{
 		global $db, $cache, $gnupg_encrypt;
-	
+
+		$this->_db_verify_tables();
 		$this->_db_verify_columns();
 	}
 
@@ -357,6 +551,11 @@ class GnuPG_Encrypt
 
 		$this->_pluginlibrary();
 	
+		foreach($this->_db_tables() as $name => $table)
+		{
+			$db->drop_table($name);
+		}
+
 		foreach($this->_db_columns() as $table => $columns)
 		{
 			foreach($columns as $name => $definition)
@@ -395,6 +594,25 @@ class GnuPG_Encrypt
 		}
 	}
 
+	// List of tables
+	function _db_tables()
+	{
+		$tables = array(
+			'gnupg_encrypt_log'	=> array(
+				'lid'			=> "int UNSIGNED NOT NULL AUTO_INCREMENT",
+				'uid'			=> "int UNSIGNED NOT NULL",
+				'secret'		=> "varchar(20) NOT NULL DEFAULT ''",
+				'sid'			=> "varchar(50) NOT NULL DEFAULT ''",
+				'code'			=> "varchar(1000) NOT NULL DEFAULT ''",
+				'dateline'		=> "int(10) NOT NULL DEFAULT '0'",
+				'status'		=> "int(1) NOT NULL DEFAULT '0'",
+				'primary_key'	=> "lid"
+			)
+		);
+
+		return $tables;
+	}
+
 	// List of columns
 	function _db_columns()
 	{
@@ -402,10 +620,61 @@ class GnuPG_Encrypt
 			'users' => array(
 				'gnupg_encrypt_public_key' => "text NULL",
 				'gnupg_encrypt_fingerprint' => "text NULL",
+				'gnupg_encrypt_2fa' => "int(1) NOT NULL default '0'",
+			),
+			'sessions'	=> array(
+				'gnupg_encrypt_block' => "int(1) NOT NULL default '0'"
 			),
 		);
 
 		return $tables;
+	}
+
+	// Verify DB tables
+	function _db_verify_tables()
+	{
+		global $db;
+
+		$collation = $db->build_create_table_collation();
+		foreach($this->_db_tables() as $table => $fields)
+		{
+			if($db->table_exists($table))
+			{
+				foreach($fields as $field => $definition)
+				{
+					if($field == 'primary_key')
+					{
+						continue;
+					}
+
+					if($db->field_exists($field, $table))
+					{
+						$db->modify_column($table, "`{$field}`", $definition);
+					}
+					else
+					{
+						$db->add_column($table, $field, $definition);
+					}
+				}
+			}
+			else
+			{
+				$query = "CREATE TABLE IF NOT EXISTS `".TABLE_PREFIX."{$table}` (";
+				foreach($fields as $field => $definition)
+				{
+					if($field == 'primary_key')
+					{
+						$query .= "PRIMARY KEY (`{$definition}`)";
+					}
+					else
+					{
+						$query .= "`{$field}` {$definition},";
+					}
+				}
+				$query .= ") ENGINE=MyISAM{$collation};";
+				$db->write_query($query);
+			}
+		}
 	}
 
 	// Verify DB columns
@@ -434,7 +703,7 @@ class GnuPG_Encrypt
 		global $mybb, $lang;
 
 		// Check for core file edit action
-		if($mybb->input['my_post_key'] == $mybb->post_code && isset($mybb->input['gnupg_encrypt']))
+		if(verify_post_check($mybb->input['my_post_key'], true) && isset($mybb->input['gnupg_encrypt']))
 		{
 			if($mybb->input['gnupg_encrypt'] == 'apply')
 			{
@@ -528,7 +797,7 @@ class GnuPG_Encrypt
 	{
 		global $themes, $mybb, $templates, $theme, $gnupg_encrypt_usercp, $lang;
 	
-		$gnupg_encrypt_usercp = '';
+		$gnupg_encrypt_usercp = $gnupg_encrypt_2fa_checked = '';
 
 		if(!is_member($mybb->settings['gnupg_encrypt_groups']))
 		{
@@ -555,15 +824,45 @@ class GnuPG_Encrypt
 
 		$gnupg_encrypt_fingerprint = htmlspecialchars_uni($gnupg_encrypt_fingerprint);
 
+		if(is_member($mybb->settings['gnupg_encrypt_2fagroups']) || is_member($mybb->settings['gnupg_encrypt_force2fagroups']))
+		{
+			$gnupg_encrypt_2fa = (int)$mybb->user['gnupg_encrypt_2fa'];
+	
+			if(isset($mybb->input['gnupg_encrypt_2fa']))
+			{
+				$gnupg_encrypt_2fa = $mybb->get_input('gnupg_encrypt_2fa', MyBB::INPUT_INT);
+			}
+
+			if($gnupg_encrypt_2fa)
+			{
+				$gnupg_encrypt_2fa_checked = ' checked="checked"';
+			}
+
+			$gnupg_encrypt_usercp_2fa = eval($templates->render('gnupgencrypt_usercp_2fa'));
+		}
+
 		$gnupg_encrypt_usercp = eval($templates->render('gnupgencrypt_usercp'));
+	}
+
+	// Hook: usercp_do_profile_end
+	function hook_usercp_do_profile_end()
+	{
+		global $mybb, $userhandler, $lang;
+
+		if((int)$userhandler->user_update_data['gnupg_encrypt_2fa'] !== 0)
+		{
+			$this->_lang_load();
+
+			redirect('usercp.php?action=profile', $lang->gnupg_encrypt_redirect_activate);
+		}
 	}
 
 	// Hook: modcp_editprofile_end
 	function hook_modcp_editprofile_end()
 	{
-		global $themes, $mybb, $templates, $theme, $gnupg_encrypt_modcp_profile, $lang, $user;
+		global $themes, $mybb, $templates, $theme, $gnupg_encrypt_modcp, $lang, $user;
 	
-		$gnupg_encrypt_modcp_profile = '';
+		$gnupg_encrypt_modcp = '';
 
 		if(!is_member($mybb->settings['gnupg_encrypt_mods']))
 		{
@@ -571,30 +870,43 @@ class GnuPG_Encrypt
 		}
 
 		$this->_lang_load();
+
+		$gnupg_encrypt_public_key = $user['gnupg_encrypt_public_key'];
+
+		$gnupg_encrypt_fingerprint = $user['gnupg_encrypt_fingerprint'];
+
+		if(isset($mybb->input['gnupg_encrypt_public_key']))
+		{
+			$gnupg_encrypt_public_key = $mybb->get_input('gnupg_encrypt_public_key', MyBB::INPUT_STRING);
+		}
+
+		if(isset($mybb->input['gnupg_encrypt_fingerprint']))
+		{
+			$gnupg_encrypt_fingerprint = $mybb->get_input('gnupg_encrypt_fingerprint', MyBB::INPUT_STRING);
+		}
+
+		$gnupg_encrypt_public_key = htmlspecialchars_uni($gnupg_encrypt_public_key);
+
+		$gnupg_encrypt_fingerprint = htmlspecialchars_uni($gnupg_encrypt_fingerprint);
+
+		if(is_member($mybb->settings['gnupg_encrypt_2fagroups'], $user) || is_member($mybb->settings['gnupg_encrypt_force2fagroups'], $user))
+		{
+			$gnupg_encrypt_2fa = (int)$user['gnupg_encrypt_2fa'];
 	
-		$lang->colorucp_desc = $lang->sprintf($lang->colorucp_desc, $mybb->settings['bburl']);
+			if(isset($mybb->input['gnupg_encrypt_2fa']))
+			{
+				$gnupg_encrypt_2fa = $mybb->get_input('gnupg_encrypt_2fa', MyBB::INPUT_INT);
+			}
 
-		if(isset($mybb->input['gnupg_encrypt']))
-		{
-			$value = htmlspecialchars_uni($mybb->get_input('gnupg_encrypt', MyBB::INPUT_STRING));
-		}
-		else
-		{
-			$value = htmlspecialchars_uni($user['gnupg_encrypt']);
-		}
+			if($gnupg_encrypt_2fa)
+			{
+				$gnupg_encrypt_2fa_checked = ' checked="checked"';
+			}
 
-		if(!empty($value))
-		{
-			$value = '#'.$value;
+			$gnupg_encrypt_usercp_2fa = eval($templates->render('gnupgencrypt_usercp_2fa'));
 		}
 
-		$username = htmlspecialchars_uni($user['username']);
-
-		$username = format_name($username, $user['usergroup'], $user['displaygroup']);
-
-		$js = eval($templates->render('gnupg_encrypt_js'));
-
-		$gnupg_encrypt_modcp_profile = eval($templates->render('gnupg_encrypt_modcp_profile'));
+		$gnupg_encrypt_modcp = eval($templates->render('gnupgencrypt_modcp'));
 	}
 
 	// Hook: datahandler_user_validate
@@ -604,9 +916,9 @@ class GnuPG_Encrypt
 
 		$registration = THIS_SCRIPT == 'member.php';
 
-		$modcp = THIS_SCRIPT == 'modcp.php';
+		$modcp = is_member($mybb->settings['gnupg_encrypt_mods']) && THIS_SCRIPT == 'modcp.php';
 
-		if(!is_member($mybb->settings['gnupg_encrypt_groups']) && !$modcp)
+		if(!is_member($mybb->settings['gnupg_encrypt_groups']) && !is_member($mybb->settings['gnupg_encrypt_forcegroups']) && !$modcp)
 		{
 			return;
 		}
@@ -617,9 +929,11 @@ class GnuPG_Encrypt
 
 		$gnupg_encrypt_fingerprint = trim($mybb->get_input('gnupg_encrypt_fingerprint', MyBB::INPUT_STRING));
 
+		$gnupg_encrypt_2fa = $mybb->get_input('gnupg_encrypt_2fa', MyBB::INPUT_INT);
+
 		if((!$gnupg_encrypt_public_key || !$gnupg_encrypt_fingerprint) && (
 			($registration && $mybb->settings['gnupg_encrypt_forceonregister']) ||
-			(!$registration && is_member($mybb->settings['gnupg_encrypt_forcegroups'], $args->data))
+			(!$modcp && !$registration && is_member($mybb->settings['gnupg_encrypt_forcegroups'], $args->data))
 		))
 		{
 			$args->set_error($lang->gnupg_encrypt_valdiate_error_register);
@@ -627,9 +941,14 @@ class GnuPG_Encrypt
 			return;
 		}
 
+		if($ismod &&(!$gnupg_encrypt_public_key || !$gnupg_encrypt_fingerprint))
+		{
+			$gnupg_encrypt_public_key = $gnupg_encrypt_fingerprint = '';
+		}
+
 		$info = $this->gpg()->import($gnupg_encrypt_public_key);
 
-		if($info['fingerprint'] !== $gnupg_encrypt_fingerprint)
+		if((string)$info['fingerprint'] !== $gnupg_encrypt_fingerprint)
 		{
 			$args->set_error($lang->gnupg_encrypt_valdiate_error_register_fingerprint);
 
@@ -639,12 +958,14 @@ class GnuPG_Encrypt
 		$args->data['gnupg_encrypt_public_key'] = $gnupg_encrypt_public_key;
 
 		$args->data['gnupg_encrypt_fingerprint'] = $gnupg_encrypt_fingerprint;
+
+		$args->data['gnupg_encrypt_2fa'] = $gnupg_encrypt_2fa;
 	}
 
 	// Hook: datahandler_user_update
 	function hook_datahandler_user_update(&$args)
 	{
-		global $db;
+		global $db, $plugins;
 
 		if(!isset($args->data['gnupg_encrypt_public_key']))
 		{
@@ -654,6 +975,29 @@ class GnuPG_Encrypt
 		$args->user_update_data['gnupg_encrypt_public_key'] = $db->escape_string($args->data['gnupg_encrypt_public_key']);
 
 		$args->user_update_data['gnupg_encrypt_fingerprint'] = $db->escape_string($args->data['gnupg_encrypt_fingerprint']);
+
+		$args->user_update_data['gnupg_encrypt_2fa'] = 1;
+
+		$uid = (int)$args->uid;
+
+		$user = get_user($uid);
+
+		$current_status = (int)$user['gnupg_encrypt_2fa'];
+
+		$new_status = (int)$args->data['gnupg_encrypt_2fa'];
+
+		if($current_status === 0 && $new_status !== 0)
+		{
+			$args->user_update_data['gnupg_encrypt_2fa'] = -1;
+		}
+		elseif($new_status === 0)
+		{
+			$db->update_query('sessions', array("gnupg_encrypt_block" => 0), "uid='{$uid}'");
+
+			$args->user_update_data['gnupg_encrypt_2fa'] = 0;
+		}
+
+		$plugins->add_hook('usercp_do_profile_end', array($this, 'hook_usercp_do_profile_end'));
 	}
 
 	// Hook: datahandler_user_insert
@@ -669,22 +1013,25 @@ class GnuPG_Encrypt
 		$args->user_insert_data['gnupg_encrypt_public_key'] = $db->escape_string($args->data['gnupg_encrypt_public_key']);
 
 		$args->user_insert_data['gnupg_encrypt_fingerprint'] = $db->escape_string($args->data['gnupg_encrypt_fingerprint']);
+
+		$args->user_insert_data['gnupg_encrypt_2fa'] = (int)$args->data['gnupg_encrypt_2fa'];
 	}
 
+	// Hook: member_profile_end
 	function hook_member_profile_end()
 	{
 		global $mybb, $gnupg_encrypt_profile, $templates, $lang, $theme, $memprofile, $parser;
 
-		if(!is_member($mybb->settings['gnupg_encrypt_groups'], $memprofile))
+		if(!$memprofile['gnupg_encrypt_public_key'] || !$memprofile['gnupg_encrypt_fingerprint'])
 		{
 			return;
 		}
 	
 		$this->_lang_load();
 
-		$gnupg_encrypt_public_key = htmlspecialchars_uni($memprofile['gnupg_encrypt_public_key']);
+		$gnupg_encrypt_public_key = trim(htmlspecialchars_uni($memprofile['gnupg_encrypt_public_key']));
 
-		$gnupg_encrypt_fingerprint = htmlspecialchars_uni($memprofile['gnupg_encrypt_fingerprint']);
+		$gnupg_encrypt_fingerprint = trim(htmlspecialchars_uni($memprofile['gnupg_encrypt_fingerprint']));
 
 		if(!($parser instanceof postParser))
 		{
@@ -694,6 +1041,223 @@ class GnuPG_Encrypt
 		$gnupg_encrypt_public_key = $parser->parse_message($gnupg_encrypt_public_key, array('nl2br' => 1));
 
 		$gnupg_encrypt_profile = eval($templates->render('gnupgencrypt_profile'));
+	}
+
+	// Hook: global_start
+	function hook_global_start()
+	{
+		global $mybb, $db;
+
+		if(!$mybb->user['gnupg_encrypt_2fa'])
+		{
+			return;
+		}
+	
+		$sid = $db->escape_string($mybb->cookies['sid']);
+
+		$query = $db->simple_select('sessions', 'gnupg_encrypt_block', "sid='{$sid}'");
+
+		$this->blocked = (bool)(int)$db->fetch_field($query, 'gnupg_encrypt_block');
+
+		if($this->blocked)
+		{
+			$this->user = $mybb->user;
+			$this->user_session = $mybb->session;
+
+			$mybb->session->load_guest();
+		}
+	}
+
+	// Hook: global_end
+	function hook_global_end()
+	{
+		global $mybb, $db, $headerinclude, $header, $theme, $footer, $templates, $lang, $gobutton;
+
+		$user = !empty($this->user['uid']) ? $this->user : $mybb->user;
+
+		if(!$user['uid'] || !$mybb->user['gnupg_encrypt_2fa'] || (THIS_SCRIPT == 'member.php' && $mybb->get_input('action', MyBB::INPUT_STRING) == 'logout'))
+		{
+			return;
+		}
+
+		$_2fa = (int)$user['gnupg_encrypt_2fa'];
+
+		if($_2fa === 0)
+		{
+			return;
+		}
+
+		if($_2fa === 1 && empty($this->blocked))
+		{
+			return;
+		}
+
+		$login_page = (THIS_SCRIPT == 'member.php' && $mybb->get_input('action', MyBB::INPUT_STRING) == 'login');
+
+		$usercp_page = (THIS_SCRIPT == 'usercp.php' && $mybb->get_input('action', MyBB::INPUT_STRING) == 'profile');
+
+		if($_2fa === -1 && !$usercp_page)
+		{
+			$mybb->settings['redirects'] = 0;
+			$mybb->user['showredirect'] = 0;
+
+			redirect($mybb->settings['bburl'].'/usercp.php?action=profile');
+		}
+
+		if($_2fa === 1 && !$login_page)
+		{
+			$mybb->settings['redirects'] = 0;
+			$mybb->user['showredirect'] = 0;
+
+			redirect($mybb->settings['bburl'].'/member.php?action=login');
+		}
+
+		$uid = (int)$user['uid'];
+
+		$this->_lang_load();
+
+		$gnupg_encrypt_public_key = trim(htmlspecialchars_uni($user['gnupg_encrypt_public_key']));
+
+		$gnupg_encrypt_fingerprint = trim(htmlspecialchars_uni($user['gnupg_encrypt_fingerprint']));
+
+		if(!($parser instanceof postParser))
+		{
+			require_once MYBB_ROOT.'inc/class_parser.php';
+
+			$parser = new postParser;
+		}
+	
+		$gnupg_encrypt_public_key = $parser->parse_message($gnupg_encrypt_public_key, array('nl2br' => 1));
+
+		$info = $this->gpg()->import($user['gnupg_encrypt_public_key']);
+
+		$this->gpg()->addencryptkey($user['gnupg_encrypt_fingerprint']);
+
+		$session = !empty($this->user_session) ? $this->user_session : $mybb->session;
+
+		$sid = $db->escape_string($session->sid);
+
+		$session = $this->get_session($session->sid);
+
+		$log = $this->get_log($session['sid'], $user['uid']);
+
+		if($_2fa === -1)
+		{
+			if(!$session['gnupg_encrypt_block'])
+			{
+				$db->update_query('sessions', array("gnupg_encrypt_block" => 1), "uid='{$uid}'");
+			}
+		}
+
+		$lid = (int)$log['lid'];
+
+		if(!$log['secret'])
+		{
+			$log['secret'] = (int)$this->generate_secret();
+
+			$db->update_query('gnupg_encrypt_log', array('secret' => $log['secret']), "lid='{$lid}'");
+		}
+
+		$gnupg_encrypt_encrypted_text = $this->gpg()->encrypt($log['secret']);
+
+		$gnupg_encrypt_encrypted_text = $parser->parse_message($gnupg_encrypt_encrypted_text, array('nl2br' => 1));
+
+		$gnupg_encrypt_decrypted_text = '';
+
+		if($mybb->request_method == 'post')
+		{
+			if(isset($mybb->input['gnupg_encrypt_decrypted_text']))
+			{
+				$gnupg_encrypt_decrypted_text = $mybb->get_input('gnupg_encrypt_decrypted_text', MyBB::INPUT_INT);
+			}
+
+			$update_data = array('code' => $gnupg_encrypt_decrypted_tex);
+
+			$valid = (int)$log['secret'] === $gnupg_encrypt_decrypted_text;
+		}
+
+		if($_2fa === -1)
+		{
+			$input_desc = $lang->gnupg_encrypt_member_2fa_desc;
+			$description = $lang->gnupg_encrypt_member_2fa_desc;
+
+			if($mybb->request_method == 'post')
+			{
+				if($valid)
+				{
+					$update_data['status'] = 1;
+
+					$db->update_query('sessions', array("gnupg_encrypt_block" => 0), "sid='{$sid}'");
+
+					$db->update_query('users', array('gnupg_encrypt_2fa' => 1), "uid='{$uid}'");
+				}
+				else
+				{
+					$update_data['status'] = -1;
+
+					$db->update_query('sessions', array("gnupg_encrypt_block" => 0));
+
+					$db->update_query('users', array('gnupg_encrypt_2fa' => 0), "uid='{$uid}'");
+				}
+
+				$db->update_query('gnupg_encrypt_log', $update_data, "session='{$sid}'");
+
+				if($valid)
+				{
+					redirect($mybb->settings['bburl'].'/usercp.php?action=profile', $lang->gnupg_encrypt_valdiate_success_activate, $lang->gnupg_encrypt_member_2fa, true);
+				}
+				else
+				{
+					redirect($mybb->settings['bburl'].'/usercp.php?action=profile', $lang->gnupg_encrypt_valdiate_error_activate, $lang->gnupg_encrypt_member_2fa, true);
+				}
+			}
+
+			$page = eval($templates->render('gnupgencrypt_confirm'));
+		}
+		else
+		{
+			$input_desc = $lang->gnupg_encrypt_member_2fa_login;
+			$description = $lang->gnupg_encrypt_member_2fa_login_desc;
+
+			if($mybb->request_method == 'post')
+			{
+				if($valid)
+				{
+					$update_data['status'] = 1;
+
+					$db->update_query('sessions', array("gnupg_encrypt_block" => 0), "sid='{$sid}'");
+				}
+				else
+				{
+					$update_data['status'] = -1;
+
+					$db->update_query('sessions', array("gnupg_encrypt_block" => 1), "sid='{$sid}'");
+				}
+
+				$db->update_query('gnupg_encrypt_log', $update_data, "sid='{$sid}'");
+
+				if($valid)
+				{
+					isset($lang->redirect_loggedin) || $lang->load('member');
+
+					redirect("index.php", $lang->redirect_loggedin);
+				}
+				else
+				{
+					my_unsetcookie('mybbuser');
+
+					my_unsetcookie('sid');
+	
+					redirect("index.php", $lang->redirect_loggedin);
+				}
+			}
+
+			$page = eval($templates->render('gnupgencrypt_login'));
+		}
+
+		output_page($page);
+
+		exit;
 	}
 
 	function gpg()
@@ -717,6 +1281,98 @@ class GnuPG_Encrypt
 
 		//_dump($info, $addencryptkey, $encrypted);
 	}
+
+	// Hook: datahandler_login_complete_en
+	function hook_datahandler_login_complete_end(&$dh)
+	{
+		global $mybb, $db, $headerinclude, $header, $theme, $footer, $templates, $lang, $session;
+
+		$user = get_user($dh->login_data['uid']);
+
+		$uid = (int)$user['uid'];
+
+		if(empty($user['gnupg_encrypt_2fa']))
+		{
+			return;
+		}
+
+		$row = $this->get_log($session->sid, $uid);
+
+		$sid = $db->escape_string($session->sid);
+
+		$this->_lang_load();
+	
+		$db->update_query('sessions', array("gnupg_encrypt_block" => 1), "sid='{$sid}'");
+	}
+
+	// Hook: member_do_login_end
+	function hook_member_do_login_end()
+	{
+		global $settings, $loginhandler, $lang;
+
+		if(empty($loginhandler->login_data['gnupg_encrypt_2fa']))
+		{
+			return;
+		}
+
+		$this->_lang_load();
+
+		redirect($settings['bburl'].'/member.php?action=login', $lang->gnupg_encrypt_redirect_loggedin);
+	}
+
+	function get_log($sid, $uid)
+	{
+		global $db;
+
+		$sid = $db->escape_string($sid);
+
+		$uid = (int)$uid;
+
+		$query = $db->simple_select('gnupg_encrypt_log', '*', "uid={$uid} AND sid='{$sid}'");
+
+		$row = $db->fetch_array($query);
+	
+		if(!$row)
+		{
+			$row = array(
+				'uid'		=> $uid,
+				'secret'	=> $encrypted_text,
+				'sid'		=> $sid,
+				'code'		=> '',
+				'dateline'	=> TIME_NOW,
+				'status'	=> 0,
+			);
+
+			$row['lid'] = $db->insert_query('gnupg_encrypt_log', $row);
+		}
+
+		return $row;
+	}
+
+	function get_session($sid)
+	{
+		global $db;
+
+		$sid = $db->escape_string($sid);
+	
+		$query = $db->simple_select('sessions', '*', "sid='{$sid}'");
+
+		$session = $db->fetch_array($query);
+
+		return $session;
+	}
+
+	function generate_secret($length=10)
+	{
+		$this->secret = '';
+		
+		for($i = 0; $length > $i; ++$i)
+		{
+			$this->secret .= rand(0,9);
+		}
+
+		return $this->secret;
+    }
 }
 
 global $gnupg_encrypt;
