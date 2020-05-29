@@ -371,7 +371,33 @@ class GnuPG_Encrypt
 	{$footer}
 </body>
 </html>',
-			'modcp' => '',
+			'modcp' => '<br />
+<fieldset class="trow2">
+	<legend><strong>{$lang->gnupg_encrypt_member_title}</strong></legend>
+	<table cellspacing="0" cellpadding="{$theme[\'tablespace\']}">
+		<tr>
+			<td>
+				<span class="smalltext">{$lang->gnupg_encrypt_member_public_key}</span>
+			</td>
+		</tr>
+		<tr>
+			<td>
+				<textarea name="gnupg_encrypt_public_key" id="gnupg_encrypt_public_key" style="width: 100%" rows="10" cols="80">{$gnupg_encrypt_public_key}</textarea>
+			</td>
+		</tr>
+		<tr>
+			<td>
+				<span class="smalltext">{$lang->gnupg_encrypt_member_fingerprint}</span>
+			</td>
+		</tr>
+		<tr>
+			<td>
+				<input type="text" class="textbox" name="gnupg_encrypt_fingerprint" id="gnupg_encrypt_fingerprint" style="width: 50%" value="{$gnupg_encrypt_fingerprint}" />
+			</td>
+		</tr>
+		{$gnupg_encrypt_usercp_2fa}
+	</table>
+</fieldset>',
 			'profile' => '<table border="0" cellspacing="{$theme[\'borderwidth\']}" cellpadding="{$theme[\'tablespace\']}" class="tborder">
 	<tr>
 		<td colspan="2" class="thead"><strong>{$lang->gnupg_encrypt_member_title}</strong></td>
