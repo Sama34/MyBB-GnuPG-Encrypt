@@ -77,10 +77,7 @@ class GnuPG_Encrypt
 		global $plugins, $mybb;
 
 		// Tell MyBB when to run the hooks
-		if(defined('IN_ADMINCP'))
-		{
-		}
-		else
+		if(!defined('IN_ADMINCP'))
 		{
 			$plugins->add_hook('member_register_end', array($this, 'hook_member_register_end'));
 			$plugins->add_hook('usercp_profile_end', array($this, 'hook_usercp_profile_end'));
@@ -1100,7 +1097,7 @@ class GnuPG_Encrypt
 	{
 		global $mybb, $db;
 
-		if(empty($mybb->user['gnupg_encrypt_2fa']))
+		if(empty($mybb->user['gnupg_encrypt_2fa']) || empty($mybb->user['gnupg_encrypt_public_key']) || empty($mybb->user['gnupg_encrypt_fingerprint']))
 		{
 			return;
 		}
