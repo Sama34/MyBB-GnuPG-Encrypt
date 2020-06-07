@@ -31,6 +31,8 @@ $l['setting_gnupg_encrypt_timeout'] = '2FA Session Timeout';
 $l['setting_gnupg_encrypt_timeout_desc'] = 'Please insert how many minutes should pass before requesting users to validate their 2FA sessions. Please verify the task by going to <code>Home » Task Manager</code>';
 $l['setting_gnupg_encrypt_pms'] = 'Encrypt Private Messages';
 $l['setting_gnupg_encrypt_pms_desc'] = 'Turn private message encryption. Please note that encrypted messages will not be reverted if this is turned off.';
+$l['setting_gnupg_encrypt_text_message'] = '2FA Encrypted Message';
+$l['setting_gnupg_encrypt_text_message_desc'] = 'Please enter the text to be encrypted for 2FA generated codes. Use <code>{1}</code> to output the 2FA code (required). Leave empty to fallback to the language string <code>gnupg_encrypt_member_encrypted_text_message</code>.';
 
 // Admin CP
 $l['gnupg_encrypt_pluginlibrary'] = 'This plugin requires <a href="{1}">PluginLibrary</a> version {2} or later to be uploaded to your forum. Please upload the necessary files.';

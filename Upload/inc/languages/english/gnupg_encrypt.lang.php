@@ -2,7 +2,7 @@
 
 /***************************************************************************
  *
- *	GnuPG Encrypt (/inc/languages/english/admin/gnupg_encrypt.php)
+ *	GnuPG Encrypt (/inc/languages/english/gnupg_encrypt.php)
  *	Author: Omar Gonzalez
  *	Author Website: https://ougc.network
  *
@@ -26,8 +26,7 @@ $l['gnupg_encrypt_member_encrypted_text_message'] = 'Welcome to my board.
 Please verify the link of the board.
 Your code is: {1}';
 $l['gnupg_encrypt_member_encrypted_pm'] = 'Please visit the website to view the message.';
-$l['gnupg_encrypt_member_encrypted_pm_message'] = 'Please verify the link of the board.
-Your message is:
+$l['gnupg_encrypt_member_encrypted_pm_message'] = 'Your encrypted message is:
 
 {1}';
 $l['gnupg_encrypt_member_decrypted_text'] = 'Decrypted Text';
@@ -44,4 +43,5 @@ $l['gnupg_encrypt_redirect_error_loggedin'] = 'Your 2FA code did not match the e
 
 $l['gnupg_encrypt_task_ran'] = 'The GnuPG Encrypt task ran.';
 
+$l['gnupg_encrypt_validate_error_pm_author'] = 'You do not have a PGP public key to encrypt messages. Please provide a public key before sending messages.';
 $l['gnupg_encrypt_validate_error_pm'] = 'The following users do not have a PGP public key to send messages: {1}';

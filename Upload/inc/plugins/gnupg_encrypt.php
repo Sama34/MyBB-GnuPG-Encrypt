@@ -112,12 +112,17 @@ class GnuPG_Encrypt
 
 			if(THIS_SCRIPT == 'modcp.php')
 			{
-				$templatelist .= ', ';
+				$templatelist .= ', gnupgencrypt_usercp_2fa, gnupgencrypt_modcp';
 			}
 
 			if(THIS_SCRIPT == 'usercp.php')
 			{
-				$templatelist .= ', ';
+				$templatelist .= ', gnupgencrypt_usercp_2fa';
+			}
+
+			if(THIS_SCRIPT == 'member.php')
+			{
+				$templatelist .= ', gnupgencrypt_profile';
 			}
 		}
 
@@ -202,8 +207,13 @@ class GnuPG_Encrypt
 	function _lang_load()
 	{
 		global $lang;
-	
-		isset($lang->setting_group_gnupg_encrypt) or $lang->load("gnupg_encrypt");
+
+		if(!isset($lang->setting_group_gnupg_encrypt))
+		{
+			$lang->load('gnupg_encrypt');
+
+			$lang->load('gnupg_encrypt', true);
+		}
 	}
 
 	// Load PluginLibrary
@@ -288,6 +298,12 @@ class GnuPG_Encrypt
 			   'description'	=> $lang->setting_gnupg_encrypt_pms_desc,
 			   'optionscode'	=> 'yesno',
 			   'value'			=> 1
+			),
+			'text_message'		=> array(
+			   'title'			=> $lang->setting_gnupg_encrypt_text_message,
+			   'description'	=> $lang->setting_gnupg_encrypt_text_message_desc,
+			   'optionscode'	=> 'textarea',
+			   'value'			=> $lang->gnupg_encrypt_member_encrypted_text_message
 			),
 		));
 	
@@ -1212,7 +1228,14 @@ class GnuPG_Encrypt
 			$db->update_query('gnupg_encrypt_log', array('secret' => $log['secret']), "lid='{$lid}'");
 		}
 
-		$secret = $lang->sprintf($lang->gnupg_encrypt_member_encrypted_text_message, $log['secret']);
+		if(empty($mybb->settings['gnupg_encrypt_text_message']))
+		{
+			$secret = $lang->sprintf($lang->gnupg_encrypt_member_encrypted_text_message, $log['secret']);
+		}
+		else
+		{
+			$secret = $lang->sprintf($mybb->settings['gnupg_encrypt_text_message'], $log['secret']);
+		}
 
 		$gnupg_encrypt_encrypted_text = $this->gpg()->encrypt($secret);
 
@@ -1324,7 +1347,7 @@ class GnuPG_Encrypt
 			return;
 		}
 
-		global $lang;
+		global $lang, $mybb;
 
 		$this->_lang_load();
 
@@ -1340,6 +1363,8 @@ class GnuPG_Encrypt
 		$this->encrypted_messages = array();
 
 		$author = get_user($dh->data['fromid']);
+	
+		$message = $lang->sprintf($lang->gnupg_encrypt_member_encrypted_pm_message, $dh->data['message']);
 
 		foreach($uids as $uid)
 		{
@@ -1349,31 +1374,43 @@ class GnuPG_Encrypt
 	
 			$this->gpg()->addencryptkey($user['gnupg_encrypt_fingerprint']);
 	
-			$message = $lang->sprintf($lang->gnupg_encrypt_member_encrypted_pm_message, $dh->data['message']);
-	
 			$encrypted_message = $this->gpg()->encrypt($message);
+
+			if(empty($encrypted_message))
+			{
+				$encrypt_error = true;
+	
+				break;
+			}
 
 			$messagelen = strlen($encrypted_message);
 
-			if(!$encrypted_message || $messagelen > 65535)
+			if($messagelen > 65535)
 			{
-				$set_error = true;
+				$message_error = true;
 	
-				continue;
+				break;
 			}
 	
 			$this->encrypted_messages[$uid] = $encrypted_message;
 		}
 
-		if($set_error)
+		if($message_error)
 		{
-			if(!$encrypted_message)
+			$dh->set_error('message_too_long', array('65535', $messagelen));
+
+			return false;
+		}
+
+		if($encrypt_error)
+		{
+			if($mybb->user['uid'] == $user['uid'])
 			{
-				$dh->set_error($lang->gnupg_encrypt_validate_error_pm, htmlspecialchars_uni($user['username']));
+				$dh->set_error($lang->gnupg_encrypt_validate_error_pm_author);
 			}
 			else
 			{
-				$dh->set_error('message_too_long', array('65535', $messagelen));
+				$dh->set_error($lang->sprintf($lang->gnupg_encrypt_validate_error_pm, htmlspecialchars_uni($user['username'])));
 			}
 
 			return false;
@@ -1471,7 +1508,7 @@ class GnuPG_Encrypt
 	{
 		global $settings, $loginhandler, $lang;
 
-		if(empty($loginhandler->login_data['gnupg_encrypt_2fa']))
+		if(empty($loginhandler->login_data['gnupg_encrypt_2fa']) || empty($loginhandler->login_data['gnupg_encrypt_public_key']) || empty($loginhandler->login_data['gnupg_encrypt_fingerprint']))
 		{
 			return;
 		}
