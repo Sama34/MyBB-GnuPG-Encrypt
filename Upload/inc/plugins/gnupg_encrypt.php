@@ -1013,12 +1013,12 @@ class GnuPG_Encrypt
 
 		$info = $this->gpg()->import($gnupg_encrypt_public_key);
 
-		if((string)$info['fingerprint'] !== $gnupg_encrypt_fingerprint)
+		/*if((string)$info['fingerprint'] !== $gnupg_encrypt_fingerprint)
 		{
 			$args->set_error($lang->gnupg_encrypt_validate_error_register_fingerprint);
 
 			return;
-		}
+		}*/
 
 		$args->data['gnupg_encrypt_public_key'] = $gnupg_encrypt_public_key;
 
@@ -1327,7 +1327,7 @@ class GnuPG_Encrypt
 
 					my_unsetcookie('sid');
 	
-					redirect("index.php", $lang->redirect_loggedin);
+					redirect("index.php", $lang->gnupg_encrypt_redirect_error_loggedin);
 				}
 			}
 
@@ -1468,16 +1468,10 @@ class GnuPG_Encrypt
 
 			putenv('GNUPGHOME='.GNUPG_WORKING_DIR.'/.gnupg');
 
-			//$gpg->seterrormode(GNUPG_ERROR_SILENT);
+			$this->gpg->seterrormode(GNUPG_ERROR_SILENT);
 		}
 
 		return $this->gpg;
-
-		//$addencryptkey = $gpg->addencryptkey($gnupg_encrypt_fingerprint);
-
-		//$encrypted =  $gpg->encrypt('message..!');
-
-		//_dump($info, $addencryptkey, $encrypted);
 	}
 
 	// Hook: datahandler_login_complete_en
