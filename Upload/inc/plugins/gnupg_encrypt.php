@@ -2,13 +2,30 @@
 
 /***************************************************************************
  *
- *	GnuPG Encrypt (/inc/plugins/gnupg_encrypt.php)
+ *	OUGC GnuPG Encrypt (/inc/plugins/gnupg_encrypt.php)
  *	Author: Omar Gonzalez
- *	Author Website: https://ougc.network
+ *	Copyright: © 2020 Omar Gonzalez
+ *
+ *	Website: https://omarg.me
  *
  *	Protect an account and private messages using GnuPG encryption.
  *
- ***************************************************************************/
+ ***************************************************************************
+
+****************************************************************************
+	This program is free software: you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation, either version 3 of the License, or
+	(at your option) any later version.
+
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+****************************************************************************/
 
 // Disallow direct access to this file for security reasons
 if(!defined("IN_MYBB"))
@@ -141,7 +158,7 @@ class GnuPG_Encrypt
 		$this->_plugin_edit();
 
 		$info = array(
-			"name"			=> 'GnuPG Encrypt',
+			"name"			=> 'OUGC GnuPG Encrypt',
 			"description"	=> $lang->setting_group_gnupg_encrypt_desc,
 			'website'		=> 'https://ougc.network',
 			'author'		=> 'Omar G.',
@@ -149,7 +166,7 @@ class GnuPG_Encrypt
 			'version'		=> '1.8.0',
 			'versioncode'	=> 1800,
 			'compatibility'	=> '18*',
-			'codename'		=> 'gnupg_encrypt',
+			'codename'		=> 'ougc_gnupg_encrypt',
 			'pl'			=> array(
 				'version'	=> 13,
 				'url'		=> 'https://community.mybb.com/mods.php?action=view&pid=573'
