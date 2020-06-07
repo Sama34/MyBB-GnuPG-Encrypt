@@ -1130,7 +1130,9 @@ class GnuPG_Encrypt
 	{
 		global $mybb, $db;
 
-		if(empty($mybb->user['gnupg_encrypt_2fa']) || empty($mybb->user['gnupg_encrypt_public_key']) || empty($mybb->user['gnupg_encrypt_fingerprint']))
+		$gnupg_encrypt_2fa = (int)$mybb->user['gnupg_encrypt_2fa'];
+
+		if(empty($gnupg_encrypt_2fa) || empty($mybb->user['gnupg_encrypt_public_key']) || empty($mybb->user['gnupg_encrypt_fingerprint']))
 		{
 			return;
 		}
@@ -1145,7 +1147,7 @@ class GnuPG_Encrypt
 
 		$this->blocked = (bool)(int)$session['gnupg_encrypt_block'] || $session['gnupg_encrypt_time'] < $hours;
 
-		if($this->blocked)
+		if($this->blocked && $gnupg_encrypt_2fa === 1)
 		{
 			$this->user = $mybb->user;
 
@@ -1160,7 +1162,7 @@ class GnuPG_Encrypt
 	{
 		global $mybb, $db, $headerinclude, $header, $theme, $footer, $templates, $lang, $gobutton;
 
-		$user = !empty($this->user['uid']) ? $this->user : $mybb->user;
+		$user = !empty($this->user) ? $this->user : $mybb->user;
 
 		if(!$user['uid'] || !$mybb->user['gnupg_encrypt_2fa'] || (THIS_SCRIPT == 'member.php' && $mybb->get_input('action', MyBB::INPUT_STRING) == 'logout'))
 		{
@@ -1218,7 +1220,7 @@ class GnuPG_Encrypt
 
 		$info = $this->gpg()->import($user['gnupg_encrypt_public_key']);
 
-		$this->gpg()->addencryptkey($user['gnupg_encrypt_fingerprint']);
+		$this->gpg()->addencryptkey(!empty($info['fingerprint']) ? $info['fingerprint'] : $user['gnupg_encrypt_fingerprint']);
 
 		$session = !empty($this->user_session) ? $this->user_session : $mybb->session;
 
@@ -1389,7 +1391,7 @@ class GnuPG_Encrypt
 	
 			$info = $this->gpg()->import($user['gnupg_encrypt_public_key']);
 	
-			$this->gpg()->addencryptkey($user['gnupg_encrypt_fingerprint']);
+			$this->gpg()->addencryptkey(!empty($info['fingerprint']) ? $info['fingerprint'] : $user['gnupg_encrypt_fingerprint']);
 	
 			$encrypted_message = $this->gpg()->encrypt($message);
 
