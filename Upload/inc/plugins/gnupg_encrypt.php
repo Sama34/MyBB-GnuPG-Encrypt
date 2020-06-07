@@ -249,7 +249,7 @@ class GnuPG_Encrypt
 	
 			$this->_lang_load();	
 
-			$i = _info();
+			$i = $this->_info();
 
 			flash_message($lang->sprintf($lang->gnupg_encrypt_pluginlibrary, $i['pl']['ulr'], $i['pl']['version']), 'error');
 
