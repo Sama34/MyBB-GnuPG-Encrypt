@@ -322,10 +322,16 @@ class GnuPG_Encrypt
 			   'optionscode'	=> 'textarea',
 			   'value'			=> $lang->gnupg_encrypt_member_encrypted_text_message
 			),
+			'wrap_2fa'		=> array(
+			   'title'			=> $lang->setting_gnupg_encrypt_wrap_2fa,
+			   'description'	=> $lang->setting_gnupg_encrypt_wrap_2fa_desc,
+			   'optionscode'	=> 'yesno',
+			   'value'			=> 0
+			),
 		));
 	
 		// Add template group
-		$PL->templates('gnupgencrypt', 'GnuPG Encrypt', array(
+		$PL->templates('gnupgencrypt', 'OUGC GnuPG Encrypt', array(
 			'confirm' => '<html>
 	<head>
 		<title>{$mybb->settings[\'bbname\']} - {$lang->gnupg_encrypt_member_2fa}</title>
@@ -420,6 +426,7 @@ class GnuPG_Encrypt
 		{$footer}
 	</body>
 </html>',
+			'login_text' => '[code]{$gnupg_encrypt_encrypted_text}[/code]',
 			'modcp' => '<br />
 <fieldset class="trow2">
 	<legend><strong>{$lang->gnupg_encrypt_member_title}</strong></legend>
@@ -1000,6 +1007,11 @@ class GnuPG_Encrypt
 
 		$modcp = is_member($mybb->settings['gnupg_encrypt_mods']) && THIS_SCRIPT == 'modcp.php';
 
+		if(!isset($mybb->input['gnupg_encrypt_public_key']))
+		{
+			return;
+		}
+
 		if(!is_member($mybb->settings['gnupg_encrypt_groups']) && !is_member($mybb->settings['gnupg_encrypt_forcegroups']) && !$modcp)
 		{
 			return;
@@ -1086,6 +1098,8 @@ class GnuPG_Encrypt
 	function hook_datahandler_user_insert(&$args)
 	{
 		global $db;
+
+		$args->data['gnupg_encrypt_public_key'] = $args->data['gnupg_encrypt_fingerprint'] = '';
 
 		if(!isset($args->data['gnupg_encrypt_public_key']))
 		{
@@ -1258,7 +1272,18 @@ class GnuPG_Encrypt
 
 		$gnupg_encrypt_encrypted_text = $this->gpg()->encrypt($secret);
 
-		$gnupg_encrypt_encrypted_text = $parser->parse_message($gnupg_encrypt_encrypted_text, array('nl2br' => 1));
+		if($mybb->settings['gnupg_encrypt_wrap_2fa'])
+		{
+			$gnupg_encrypt_encrypted_text = eval($templates->render('gnupgencrypt_login_text', true, false));
+
+			$parser_options = array('allow_mycode' => 1);
+		}
+		else
+		{
+			$parser_options = array('nl2br' => 1);
+		}
+
+		$gnupg_encrypt_encrypted_text = $parser->parse_message(trim($gnupg_encrypt_encrypted_text), $parser_options);
 
 		$gnupg_encrypt_decrypted_text = '';
 
@@ -1458,12 +1483,12 @@ class GnuPG_Encrypt
 	// Hook: postbit_pm
 	function hook_postbit_pm(&$post)
 	{
-		if(empty($post['message']))
+		global $parser, $lang, $mybb;
+
+		if(empty($post['message']) || $mybb->get_input('action') != 'read')
 		{
 			return;
 		}
-
-		global $parser, $lang;
 
 		$this->_lang_load();
 
@@ -1519,9 +1544,14 @@ class GnuPG_Encrypt
 	// Hook: member_do_login_end
 	function hook_member_do_login_end()
 	{
-		global $settings, $loginhandler, $lang;
+		global $settings, $loginhandler, $lang, $validated;
 
-		if(empty($loginhandler->login_data['gnupg_encrypt_2fa']) || empty($loginhandler->login_data['gnupg_encrypt_public_key']) || empty($loginhandler->login_data['gnupg_encrypt_fingerprint']))
+		if(
+			!$validated ||
+			empty($loginhandler->login_data['gnupg_encrypt_2fa']) ||
+			empty($loginhandler->login_data['gnupg_encrypt_public_key']) ||
+			empty($loginhandler->login_data['gnupg_encrypt_fingerprint'])
+		)
 		{
 			return;
 		}
